@@ -94,14 +94,14 @@ def getLocalFrameMatrix(R_ij, t_ij):
     return T_ij
   
 
-def setAngles(phis, lengths):
+def forward_kinematics(phis, l1, l2, l3, l4):
 
 
   sphereRadius = 0.5
 
   # Set lengths and angles
-  L1, L2, L3 = lengths
-  phi1, phi2, phi3 = phis
+  L1, L2, L3, L4 = (l1, l2, l3, l4)
+  phi1, phi2, phi3, phi4 = phis
   
   # Matrix of Frame 1 (written w.r.t. Frame 0, which is the previous frame) 
   R_01 = RotationMatrix(phi1, axis_name = 'z')   # Rotation matrix
@@ -150,20 +150,54 @@ def setAngles(phis, lengths):
   # Create the coordinate frame mesh and transform. This point is the end-effector. So, I am 
   # just creating the coordinate frame. 
   Frame3 = createCoordinateFrameMesh()
-  Frame3 += Cylinder(r=0.4, height=1, pos = (1/2,0,0), c="blue", alpha=.8, axis=(1,0,0))
+  Frame3 += Cylinder(r=0.4, height=L3, pos = (L3/2,0,0), c="blue", alpha=.8, axis=(1,0,0))
   Frame3 += Sphere(r=0.5).color("gray").alpha(.8)
 
   # Transform the part to position it at its correct location and orientation 
   Frame3.apply_transform(T_03)  
+  
+  
+  # Matrix of Frame 4 (written w.r.t. Frame 3, which is the previous frame)   
+  R_34 = RotationMatrix(phi4, axis_name = 'z')   # Rotation matrix
+  p4   = np.array([[L3],[0.0], [0.0]])           # Frame's origin (w.r.t. previous frame)
+  t_34 = p4                                      # Translation vector
+  
+  # Matrix of Frame 4 w.r.t. Frame 3 
+  T_34 = getLocalFrameMatrix(R_34, t_34)
+  
+  # Matrix of Frame 4 w.r.t. Frame 0 (i.e., the world frame)
+  T_04 = T_03 @ T_34
+  
+  Frame4 = createCoordinateFrameMesh()
+  Frame4 += Cylinder(r=0.4, height=L4, pos = (L4/2,0,0), c="green", alpha=.8, axis=(1,0,0))
+  Frame4 += Sphere(r=0.5).color("gray").alpha(.8)
 
+  Frame4.apply_transform(T_04)
+
+
+  # Matrix of Frame 4 (written w.r.t. Frame 3, which is the previous frame)   
+  R_45 = RotationMatrix(0, axis_name = 'z')   # Rotation matrix
+  p5   = np.array([[L4],[0.0], [0.0]])           # Frame's origin (w.r.t. previous frame)
+  t_45 = p5                                     # Translation vector
+  
+  # Matrix of Frame 4 w.r.t. Frame 3 
+  T_45 = getLocalFrameMatrix(R_45, t_45)
+  
+  # Matrix of Frame 4 w.r.t. Frame 0 (i.e., the world frame)
+  T_05 = T_04 @ T_45
+
+  Frame4.apply_transform(T_04)
 
   axes = Axes(xrange=(0,20), yrange=(-2,10), zrange=(0,6))
   # Show everything 
-  plt = show([Frame1, Frame2, Frame3], viewup="z", axes=axes, new=False, bg='beige', bg2='lb', offscreen=False, interactive=False)
+  plt = show([Frame1, Frame2, Frame3, Frame4], viewup="z", axes=axes, new=False, bg='beige', bg2='lb', offscreen=False, interactive=False)
   plt.remove(Frame1)
   plt.remove(Frame2)
   plt.remove(Frame3)
+  plt.remove(Frame4)
   plt.remove(axes)
+  
+  return T_01, T_02, T_03, T_04, T_05
 
   
 def loop_function(time):
@@ -173,9 +207,9 @@ def main():
 
 
   
-  start_angles = (70, -50, -50)
-  end_angles = (-20, 50, 120)
-  lengths = (8, 5, 1)
+  start_angles = (70, -50, -50, 0)
+  end_angles = (-20, 50, 120, 0)
+  lengths = (8, 5, 2, 1)
   
   timer = 0
   speed = 0.1
@@ -183,12 +217,13 @@ def main():
     loop_time = loop_function(timer)
     current_angles = (start_angles[0] * loop_time + end_angles[0] * (1 - loop_time),
                       start_angles[1] * loop_time + end_angles[1] * (1 - loop_time),
-                      start_angles[2] * loop_time + end_angles[2] * (1 - loop_time),)
-    setAngles(current_angles, lengths)
+                      start_angles[2] * loop_time + end_angles[2] * (1 - loop_time),
+                      start_angles[3] * loop_time + end_angles[3] * (1 - loop_time),)
+    forward_kinematics(current_angles, lengths[0], lengths[1], lengths[2], lengths[3])
     timer += speed
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 
 
 
